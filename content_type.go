@@ -6,10 +6,12 @@ import (
 	"mime"
 	"net/http"
 	"strings"
+
+	"github.com/gdey/chi-render/responders/helpers"
 )
 
 var (
-	ContentTypeCtxKey = &contextKey{"ContentType"}
+	ContentTypeCtxKey = helpers.ContentTypeCtxKey
 )
 
 // ContentTypeSet is a ordered set of content types
@@ -118,7 +120,7 @@ allTypes:
 }
 
 // NewContentTypeSet returns a new set of ContentTypes based on the set of strings passed in. mime.ParseMediaType is
-// used to prase each string. Empty strings and strings that do not parse are ignored.
+// used to parse each string. Empty strings and strings that do not parse are ignored.
 func NewContentTypeSet(types ...string) *ContentTypeSet {
 	if len(types) == 0 {
 		return nil
