@@ -41,7 +41,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"html/template"
@@ -71,11 +70,11 @@ func main() {
 	//	r.Use(render.SetContentType(render.ContentTypeJSON))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("root."))
+		_, _ = w.Write([]byte("root."))
 	})
 
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("pong"))
+		_, _ = w.Write([]byte("pong"))
 	})
 
 	r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +84,7 @@ func main() {
 	// RESTy routes for "articles" resource
 	r.Route("/articles", func(r chi.Router) {
 		ctrl := render.CloneDefault()
-		ctrl.SetResponder(render.ContentTypeHTML, responders.HTML)
+		_ = ctrl.SetResponder(render.ContentTypeHTML, responders.HTML)
 		r.Use(render.WithCtx(ctrl))
 		r.With(paginate).Get("/", ListArticles)
 		r.Post("/", CreateArticle)       // POST /articles
@@ -118,12 +117,14 @@ func main() {
 		return
 	}
 
-	http.ListenAndServe(":3333", r)
+	_ = http.ListenAndServe(":3333", r)
 }
 
 func ListArticles(w http.ResponseWriter, r *http.Request) {
 	if err := render.RenderList(w, r, NewArticleListResponse(articles)); err != nil {
-		render.Render(w, r, ErrRender(err))
+		renderErr := &ErrRender{}
+		renderErr.Err = err
+		_ = render.Render(w, r, renderErr)
 		return
 	}
 }
@@ -141,11 +142,11 @@ func ArticleCtx(next http.Handler) http.Handler {
 		} else if articleSlug := chi.URLParam(r, "articleSlug"); articleSlug != "" {
 			article, err = dbGetArticleBySlug(articleSlug)
 		} else {
-			render.Render(w, r, ErrNotFound)
+			_ = render.Render(w, r, &ErrNotFound{Resource: fmt.Sprintf("article %v", articleSlug)})
 			return
 		}
 		if err != nil {
-			render.Render(w, r, ErrNotFound)
+			_ = render.Render(w, r, &ErrNotFound{Resource: "article"})
 			return
 		}
 
@@ -157,7 +158,7 @@ func ArticleCtx(next http.Handler) http.Handler {
 // SearchArticles searches the Articles data for a matching article.
 // It's just a stub, but you get the idea.
 func SearchArticles(w http.ResponseWriter, r *http.Request) {
-	render.FromContext(r).RenderList(w, r, NewArticleListResponse(articles))
+	_ = render.FromContext(r).RenderList(w, r, NewArticleListResponse(articles))
 }
 
 // CreateArticle persists the posted Article and returns it
@@ -166,15 +167,17 @@ func CreateArticle(w http.ResponseWriter, r *http.Request) {
 	render := render.FromContext(r)
 	data := &ArticleRequest{}
 	if err := render.Bind(r, data); err != nil {
-		render.Render(w, r, ErrInvalidRequest(err))
+		invalidRequest := &ErrInvalidRequest{}
+		invalidRequest.Err = err
+		_ = render.Render(w, r, invalidRequest)
 		return
 	}
 
 	article := data.Article
-	dbNewArticle(article)
+	_, _ = dbNewArticle(article)
 
 	render.Status(r, http.StatusCreated)
-	render.Render(w, r, NewArticleResponse(article))
+	_ = render.Render(w, r, NewArticleResponse(article))
 }
 
 // GetArticle returns the specific Article. You'll notice it just
@@ -189,7 +192,9 @@ func GetArticle(w http.ResponseWriter, r *http.Request) {
 	article := r.Context().Value("article").(*Article)
 
 	if err := render.Render(w, r, NewArticleResponse(article)); err != nil {
-		render.Render(w, r, ErrRender(err))
+		renderErr := &ErrRender{}
+		renderErr.Err = err
+		_ = render.Render(w, r, renderErr)
 		return
 	}
 }
@@ -201,13 +206,15 @@ func UpdateArticle(w http.ResponseWriter, r *http.Request) {
 
 	data := &ArticleRequest{Article: article}
 	if err := render.Bind(r, data); err != nil {
-		render.Render(w, r, ErrInvalidRequest(err))
+		invalidRequest := &ErrInvalidRequest{}
+		invalidRequest.Err = err
+		_ = render.Render(w, r, invalidRequest)
 		return
 	}
 	article = data.Article
-	dbUpdateArticle(article.ID, article)
+	_, _ = dbUpdateArticle(article.ID, article)
 
-	render.Render(w, r, NewArticleResponse(article))
+	_ = render.Render(w, r, NewArticleResponse(article))
 }
 
 // DeleteArticle removes an existing Article from our persistent store.
@@ -222,11 +229,13 @@ func DeleteArticle(w http.ResponseWriter, r *http.Request) {
 
 	article, err = dbRemoveArticle(article.ID)
 	if err != nil {
-		render.Render(w, r, ErrInvalidRequest(err))
+		invalidRequest := &ErrInvalidRequest{}
+		invalidRequest.Err = err
+		_ = render.Render(w, r, invalidRequest)
 		return
 	}
 
-	render.Render(w, r, NewArticleResponse(article))
+	_ = render.Render(w, r, NewArticleResponse(article))
 }
 
 // A completely separate router for administrator routes
@@ -234,13 +243,13 @@ func adminRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Use(AdminOnly)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("admin: index"))
+		_, _ = w.Write([]byte("admin: index"))
 	})
 	r.Get("/accounts", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("admin: list accounts.."))
+		_, _ = w.Write([]byte("admin: list accounts.."))
 	})
 	r.Get("/users/{userId}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(fmt.Sprintf("admin: view user id %v", chi.URLParam(r, "userId"))))
+		_, _ = w.Write([]byte(fmt.Sprintf("admin: view user id %v", chi.URLParam(r, "userId"))))
 	})
 	return r
 }
@@ -279,19 +288,15 @@ func paginate(next http.Handler) http.Handler {
 type UserPayload struct {
 	*User
 	Role string `json:"role"`
+
+	render.NilBinder
 }
 
 func NewUserPayloadResponse(user *User) *UserPayload {
 	return &UserPayload{User: user}
 }
 
-// Bind on UserPayload will run after the unmarshalling is complete, its
-// a good time to focus some post-processing after a decoding.
-func (u *UserPayload) Bind(r *http.Request) error {
-	return nil
-}
-
-func (u *UserPayload) Render(w http.ResponseWriter, r *http.Request) error {
+func (u *UserPayload) Render(_ http.ResponseWriter, _ *http.Request) error {
 	u.Role = "collaborator"
 	return nil
 }
@@ -313,15 +318,15 @@ type ArticleRequest struct {
 	ProtectedID string `json:"id"` // override 'id' json to have more control
 }
 
-func (a *ArticleRequest) Bind(r *http.Request) error {
+func (a *ArticleRequest) Bind(_ *http.Request) error {
 	// a.Article is nil if no Article fields are sent in the request. Return an
 	// error to avoid a nil pointer dereference.
 	if a.Article == nil {
-		return errors.New("missing required Article fields.")
+		return ErrArticleMissingField
 	}
 
-	// a.User is nil if no Userpayload fields are sent in the request. In this app
-	// this won't cause a panic, but checks in this Bind method may be required if
+	// a.User is nil if the UserPayload has not been sent in the request. In this app
+	// this won't cause a panic, but checks in the Bind method may be required if
 	// a.User or further nested fields like a.User.Name are accessed elsewhere.
 
 	// just a post-process after a decode..
@@ -358,7 +363,7 @@ func NewArticleResponse(article *Article) *ArticleResponse {
 	return resp
 }
 
-func (rd *ArticleResponse) Render(w http.ResponseWriter, r *http.Request) error {
+func (rd *ArticleResponse) Render(_ http.ResponseWriter, _ *http.Request) error {
 	// Pre-processing before a response is marshalled and sent across the wire
 	rd.Elapsed = 10
 	return nil
@@ -389,7 +394,7 @@ func (rd *ArticleResponse) MarshalHTML() ([]byte, error) {
 }
 
 func NewArticleListResponse(articles []*Article) []render.Renderer {
-	list := []render.Renderer{}
+	list := make([]render.Renderer, 0, len(articles))
 	for _, article := range articles {
 		list = append(list, NewArticleResponse(article))
 	}
@@ -411,45 +416,50 @@ func NewArticleListResponse(articles []*Article) []render.Renderer {
 // In the best case scenario, the excellent github.com/pkg/errors package
 // helps reveal information on the error, setting it on Err, and in the Render()
 // method, using it to set the application-specific error code in AppCode.
-type ErrResponse struct {
-	Err            error `json:"-"` // low-level runtime error
-	HTTPStatusCode int   `json:"-"` // http response status code
 
-	StatusText string `json:"status"`          // user-level status message
-	AppCode    int64  `json:"code,omitempty"`  // application-specific error code
-	ErrorText  string `json:"error,omitempty"` // application-level error message, for debugging
+type ErrInvalidRequest struct {
+	render.ErrResponse
 }
 
-func (e *ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {
-	if e.StatusText == "" {
-		e.StatusText = http.StatusText(e.HTTPStatusCode)
-	}
-	if e.ErrorText == "" && e.Err != nil {
-		e.ErrorText = e.Err.Error()
-	}
-	render.Status(r, e.HTTPStatusCode)
+func (err *ErrInvalidRequest) Render(_ http.ResponseWriter, _ *http.Request) error {
+	err.StatusCode = 400
 	return nil
 }
 
-func ErrInvalidRequest(err error) render.Renderer {
-	return &ErrResponse{
-		Err:            err,
-		HTTPStatusCode: 400,
-		StatusText:     "Invalid request.",
-		ErrorText:      err.Error(),
-	}
+type ErrRender struct {
+	render.ErrResponse
 }
 
-func ErrRender(err error) render.Renderer {
-	return &ErrResponse{
-		Err:            err,
-		HTTPStatusCode: 422,
-		StatusText:     "Error rendering response.",
-		ErrorText:      err.Error(),
-	}
+func (err *ErrRender) Render(_ http.ResponseWriter, _ *http.Request) error {
+	err.StatusCode = 422
+	err.StatusText = "Error rendering response."
+	return nil
 }
 
-var ErrNotFound = &ErrResponse{HTTPStatusCode: 404, StatusText: "Resource not found."}
+// ErrNotFound is returned when the requested resource is not available in the datastore
+type ErrNotFound struct {
+	render.ErrResponse
+	// Resource is the name of the object/page that was not found
+	Resource string
+}
+
+func (err *ErrNotFound) Render(_ http.ResponseWriter, _ *http.Request) error {
+	err.StatusCode = 404
+	if err.Resource != "" {
+		err.ErrorText = fmt.Sprintf("%v resource not found", err.Resource)
+	}
+	return nil
+}
+
+type ErrString string
+
+func (err ErrString) Error() string { return string(err) }
+
+const (
+	ErrArticleNotFound     ErrString = "article not found"
+	ErrArticleMissingField ErrString = "missing required Article fields"
+	ErrUserNotFound        ErrString = "user not found"
+)
 
 //--
 // Data model objects and persistence mocks:
@@ -459,9 +469,9 @@ var ErrNotFound = &ErrResponse{HTTPStatusCode: 404, StatusText: "Resource not fo
 type User struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
-}
 
-func (*User) Render(w http.ResponseWriter, r *http.Request) error { return nil }
+	render.NilRender
+}
 
 // Article data model. I suggest looking at https://upper.io for an easy
 // and powerful data persistence adapter.
@@ -499,7 +509,7 @@ func dbGetArticle(id string) (*Article, error) {
 			return a, nil
 		}
 	}
-	return nil, errors.New("article not found.")
+	return nil, ErrArticleNotFound
 }
 
 func dbGetArticleBySlug(slug string) (*Article, error) {
@@ -508,7 +518,7 @@ func dbGetArticleBySlug(slug string) (*Article, error) {
 			return a, nil
 		}
 	}
-	return nil, errors.New("article not found.")
+	return nil, ErrArticleNotFound
 }
 
 func dbUpdateArticle(id string, article *Article) (*Article, error) {
@@ -518,7 +528,7 @@ func dbUpdateArticle(id string, article *Article) (*Article, error) {
 			return article, nil
 		}
 	}
-	return nil, errors.New("article not found.")
+	return nil, ErrArticleNotFound
 }
 
 func dbRemoveArticle(id string) (*Article, error) {
@@ -528,7 +538,7 @@ func dbRemoveArticle(id string) (*Article, error) {
 			return a, nil
 		}
 	}
-	return nil, errors.New("article not found.")
+	return nil, ErrArticleNotFound
 }
 
 func dbGetUser(id int64) (*User, error) {
@@ -537,5 +547,5 @@ func dbGetUser(id int64) (*User, error) {
 			return u, nil
 		}
 	}
-	return nil, errors.New("user not found.")
+	return nil, ErrUserNotFound
 }

@@ -69,12 +69,19 @@ import (
 
 // Renderer interface for managing response payloads.
 type Renderer interface {
-	// Render
+	// Render should modify the object so that it is in the correct configuration
+	// for the responders to render the object. One can interrogate the request object
+	// or if necessary modify the headers in the ResponseWriter object.
+	// The Render method should not write to the body fo the ResponseWriter object,
+	// the at is reserved for the responder objects.
 	Render(w http.ResponseWriter, r *http.Request) error
 }
 
 // Binder interface for managing request payloads.
 type Binder interface {
+	// Binder should be used to recompose the original the data model object.
+	// The Binder function is called after the decoders is called so the body
+	// of the http.Request object will be spent.
 	Bind(r *http.Request) error
 }
 
@@ -102,6 +109,20 @@ func WithCtx(c *Controller) func(http.Handler) http.Handler {
 
 // CloneDefault will return a Clone of the default controller
 func CloneDefault() *Controller { return defaultCtrl.Clone() }
+
+// NilRender is an empty struct that can be embedded to provide a simple
+// way to turn a struct into a Render-able object
+type NilRender struct{}
+
+// Render does nothing
+func (NilRender) Render(_ http.ResponseWriter, _ *http.Request) error { return nil }
+
+// NilBinder is an empty struct that can be embedded to provide a simple
+// way to return a struct into a Bind-able object
+type NilBinder struct{}
+
+// Bind does nothing
+func (NilBinder) Bind(_ *http.Request) error { return nil }
 
 // Bind decodes a request body and executes the Binder method of the
 // payload structure.
@@ -191,8 +212,8 @@ func renderer(w http.ResponseWriter, r *http.Request, v Renderer) error {
 			continue
 		}
 
-		len := f.Len()
-		if len == 0 {
+		length := f.Len()
+		if length == 0 {
 			continue
 		}
 
@@ -211,7 +232,7 @@ func renderer(w http.ResponseWriter, r *http.Request, v Renderer) error {
 			continue
 		}
 
-		for j := 1; j < len; j++ {
+		for j := 1; j < length; j++ {
 			rvv = f.Index(j)
 			if isInterface && !rvv.Type().Implements(rendererType) {
 				// skip this one
@@ -263,8 +284,8 @@ func binder(r *http.Request, v Binder) error {
 			continue
 		}
 
-		len := f.Len()
-		if len == 0 {
+		length := f.Len()
+		if length == 0 {
 			continue
 		}
 
@@ -283,7 +304,7 @@ func binder(r *http.Request, v Binder) error {
 			continue
 		}
 
-		for j := 1; j < len; j++ {
+		for j := 1; j < length; j++ {
 			rvv = f.Index(j)
 			if isInterface && !rvv.Type().Implements(binderType) {
 				// skip this one
@@ -311,4 +332,8 @@ var (
 
 	// Make sure controller fulfill the Interface interface
 	_ = Interface(new(Controller))
+	_ = Renderer(NilRender{})
+	_ = Binder(NilBinder{})
+	_ = Renderer(struct{ NilRender }{})
+	_ = Binder(struct{ NilBinder }{})
 )
