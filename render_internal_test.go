@@ -38,22 +38,62 @@ func TestRender(t *testing.T) {
 	}
 
 	tests := map[string]tcase{
-		"no panic with nilRender": tcase{
+		"no panic with nilRender": {
 			V: struct {
 				NilRender
 			}{},
 		},
-		"no panic with nilRender w private": tcase{
+		"no panic with nilRender w private": {
 			V: struct {
 				NilRender
 				foo int
 			}{},
 		},
-		"no panic with nilRender w private niRender": tcase{
+		"no panic with nilRender w non render struct": {
+			V: struct {
+				NilRender
+				foo struct {
+					bar int
+				}
+			}{},
+		},
+		"no panic with nilRender w non render ptr struct": {
+			V: struct {
+				NilRender
+				foo *struct {
+					bar int
+				}
+			}{},
+		},
+		"no panic with nilRender w private nilRender": {
 			V: struct {
 				NilRender
 				foo struct {
 					NilRender
+				}
+			}{},
+		},
+		"no panic with nilRender w private ptr nilRender": {
+			V: struct {
+				NilRender
+				foo struct {
+					*NilRender
+				}
+			}{},
+		},
+		"no panic with ptr nilRender w private ptr nilRender": {
+			V: &struct {
+				NilRender
+				foo struct {
+					*NilRender
+				}
+			}{},
+		},
+		"no panic with ptr nilRender w private ptr ": {
+			V: &struct {
+				NilRender
+				foo *struct {
+					bar int
 				}
 			}{},
 		},

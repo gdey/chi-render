@@ -209,7 +209,7 @@ func renderer(w http.ResponseWriter, r *http.Request, v Renderer) error {
 		}
 
 		// Check to see if it's a render type
-		if rv.Type().Implements(rendererType) {
+		if f.Type().Implements(rendererType) {
 			fv := f.Interface().(Renderer)
 			if err := renderer(w, r, fv); err != nil {
 				return err
