@@ -7,7 +7,7 @@ well-*defined* request and response payloads. Together with the endpoint handler
 the request and response payloads make up the contract between your server and the
 clients calling on it.
 
-Typically in a REST API application, you will have your data models (objects/structs)
+Typically, in a REST API application, you will have your data models (objects/structs)
 that hold lower-level runtime application state, and at times you need to assemble,
 decorate, hide or transform the representation before responding to a client. That
 server output (response payload) structure, is also likely the input structure to
@@ -17,8 +17,8 @@ This is where `render` comes in - offering a few simple helpers and interfaces t
 provide a simple pattern for managing payload encoding and decoding.
 
 We've also combined it with some helpers for responding to content types and parsing
-request bodies. Please have a look at the [rest](https://github.com/go-chi/chi/blob/master/_examples/rest/main.go)
-example which uses the latest chi/render sub-pkg.
+request bodies. Please have a look at the [rest](_examples/blog/main.go)
+example which uses the latest gdey/chi-render sub-pkg.
 
 All feedback is welcome, thank you!
 

@@ -1,0 +1,16 @@
+# Run code test on every push
+on: push
+
+name: Test code
+jobs:
+        test_all:
+                name: run all test cases
+                runs-on: ubuntu-latest
+                strategy:
+                        matrix:
+                                go: ['1.15']
+                steps:
+                - name: Checkout code
+                  uses: actions/checkout@v2
+                - name: rn go tests
+                  run: go test -mod=mod -v -race ./...
