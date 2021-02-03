@@ -188,16 +188,28 @@ func renderer(w http.ResponseWriter, r *http.Request, v Renderer) error {
 	}
 
 	// For structs, we call Render on each field that implements Renderer
+	rt := rv.Type()
 	for i := 0; i < rv.NumField(); i++ {
 
 		f := rv.Field(i)
+
 		// if the field is nil weather it's a Render or not we should skip
 		if isNil(f) {
 			continue
 		}
 
+		// if structField PkgPath is empty it's a private field.
+		//
+		// PkgPath is the package path that qualifies a lower case (unexported)
+		// field name. It is empty for upper case (exported) field names.
+		// See https://golang.org/ref/spec#Uniqueness_of_identifiers
+		// ref: https://pkg.go.dev/reflect#StructField
+		if rt.Field(i).PkgPath != "" {
+			continue
+		}
+
 		// Check to see if it's a render type
-		if f.Type().Implements(rendererType) {
+		if rv.Type().Implements(rendererType) {
 			fv := f.Interface().(Renderer)
 			if err := renderer(w, r, fv); err != nil {
 				return err
