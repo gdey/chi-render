@@ -3,9 +3,10 @@ package render
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gdey/chi-render/responders/helpers"
 	"net/http"
 	"reflect"
+
+	"github.com/gdey/chi-render/responders/helpers"
 )
 
 func ChannelEventStream(w http.ResponseWriter, r *http.Request, v interface{}) error {
@@ -14,9 +15,8 @@ func ChannelEventStream(w http.ResponseWriter, r *http.Request, v interface{}) e
 		panic(fmt.Sprintf("render: event stream expects a channel, not %v", reflect.TypeOf(v).Kind()))
 	}
 
-	helpers.SetContentTypeHeader(w,"text/event-stream; charset=utf-8")
+	helpers.SetContentTypeHeader(w, "text/event-stream; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-
 
 	if r.ProtoMajor == 1 {
 		// An endpoint MUST NOT generate an HTTP/2 message containing connection-specific header fields.
@@ -24,7 +24,7 @@ func ChannelEventStream(w http.ResponseWriter, r *http.Request, v interface{}) e
 		w.Header().Set("Connection", "keep-alive")
 	}
 
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 
 	ctx := r.Context()
 	for {
@@ -34,6 +34,7 @@ func ChannelEventStream(w http.ResponseWriter, r *http.Request, v interface{}) e
 		}); chosen {
 		case 0: // equivalent to: case <-ctx.Done()
 			w.Write([]byte("event: error\ndata: {\"error\":\"Server Timeout\"}\n\n"))
+			w.WriteHeader(http.StatusGatewayTimeout)
 			return nil
 
 		default: // equivalent to: case v, ok := <-stream

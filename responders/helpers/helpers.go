@@ -56,5 +56,5 @@ func WriteStatus(w writeHeaderer, ctx context.Context) {
 
 // NoContent returns a HTTP 204 "No Content" response.
 func NoContent(w writeHeaderer) {
-	w.WriteHeader(204)
+	w.WriteHeader(http.StatusNoContent)
 }
