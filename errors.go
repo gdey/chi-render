@@ -84,7 +84,11 @@ func (err *ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {
 		err.StatusText = http.StatusText(err.StatusCode)
 	}
 	if err.ErrorText == "" {
-		err.ErrorText = err.Err.Error()
+		if err.Err == nil {
+			err.ErrorText = err.StatusText
+		} else {
+			err.ErrorText = err.Err.Error()
+		}
 	}
 
 	// Set the http response status based on the error
